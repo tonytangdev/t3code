@@ -150,7 +150,13 @@ Provider commands must start the message to run. T3 Code commands such as
 `/model` and `/plan`, and skill mentions, work on any line.
 
 Send `/compact` in an existing conversation to reduce context usage when the
-provider supports it. Web and desktop also offer compaction from the context meter.
+provider supports it.
+
+On web and desktop, the strip below the composer shows your provider's current
+session limit (for example `5h 42% · resets in 1h 20m`) whenever the provider reports
+one, with the thread's context window usage in front of it. Pick how the
+context reads with **Context token display** in Settings → General, or turn
+**Context tokens in composer** off to keep just the session limit.
 
 ## Context in your message
 

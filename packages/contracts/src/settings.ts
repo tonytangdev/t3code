@@ -287,6 +287,11 @@ export const LoadBalancingWeights = Schema.Record(
 
 export const DiffColorScheme = Schema.Literals(["red-green", "blue-orange"]);
 
+// How the composer usage line renders the context segment when
+// `contextWindowMeterEnabled` is on.
+export const ContextTokenDisplay = Schema.Literals(["used", "used-of-max", "percent"]);
+export type ContextTokenDisplay = typeof ContextTokenDisplay.Type;
+
 export const ClientSettingsSchema = Schema.Struct({
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
@@ -424,9 +429,12 @@ export const ClientSettingsSchema = Schema.Struct({
   // default UI; this beta flag restores it (plus the /plan and /default slash
   // commands) for users who still rely on the old workflow.
   planModeEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-  // Legacy context window meter. The composer hides it by default; users who
-  // still want the old usage indicator can restore it from Settings.
-  contextWindowMeterEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  // Context tokens in the usage line under the composer. The key predates the
+  // line (it gated the old ring meter) and is kept so a stored choice applies.
+  contextWindowMeterEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  contextTokenDisplay: ContextTokenDisplay.pipe(
+    Schema.withDecodingDefault(Effect.succeed("used" as const)),
+  ),
   // Desktop resting composer: scrolling an existing thread's conversation
   // settles the composer into its single-line layout. Losing focus never does.
   composerCollapseOnScroll: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
@@ -1572,6 +1580,7 @@ export const ClientSettingsPatch = Schema.Struct({
   ),
   planModeEnabled: Schema.optionalKey(Schema.Boolean),
   contextWindowMeterEnabled: Schema.optionalKey(Schema.Boolean),
+  contextTokenDisplay: Schema.optionalKey(ContextTokenDisplay),
   composerCollapseOnScroll: Schema.optionalKey(Schema.Boolean),
   composerRichTextEnabled: Schema.optionalKey(Schema.Boolean),
   sendShortcut: Schema.optionalKey(Schema.Literals(["enter", "mod-enter-multiline", "mod-enter"])),

@@ -400,6 +400,7 @@ import {
   hasDismissedResumeCompaction,
   shouldOfferResumeCompaction,
 } from "./chat/ContextWindowMeter.logic";
+import { selectSessionWindow } from "./chat/ComposerUsageLine.logic";
 import { deriveLatestContextWindowSnapshot, formatContextWindowTokens } from "../lib/contextWindow";
 import {
   DRAFT_HERO_TRANSITION_ANIMATION_ID,
@@ -3745,17 +3746,35 @@ export default function ChatView(props: ChatViewProps) {
   // Keep a hidden, off-flow strip mounted for existing threads so the composer
   // can measure whether its relocated controls fit. The visible chrome remains
   // content-driven: Git/environment context or controls that actually fit.
+  // Memoised so the memo'd BranchToolbar does not re-render on every ChatView pass.
+  const composerUsageLimits = activeProviderStatus?.usageLimits;
+  const composerUsageContextDisplay = settings.contextWindowMeterEnabled
+    ? settings.contextTokenDisplay
+    : null;
+  const composerUsage = useMemo(
+    () => ({
+      contextWindow: activeContextWindow,
+      contextDisplay: composerUsageContextDisplay,
+      limits: composerUsageLimits,
+    }),
+    [activeContextWindow, composerUsageContextDisplay, composerUsageLimits],
+  );
+  const hasComposerUsageLine =
+    (composerUsage.contextDisplay !== null && composerUsage.contextWindow !== null) ||
+    selectSessionWindow(composerUsage.limits) !== null;
   const mountComposerContextStrip = shouldShowComposerContextStrip({
     hasActiveProject: activeProject !== null,
     isGitRepo,
     showEnvironmentIndicator: showComposerEnvironmentIndicator,
     hostsRestingComposerControls: routeKind === "server",
+    hasUsageLine: hasComposerUsageLine,
   });
   const showComposerContextStrip = shouldShowComposerContextStrip({
     hasActiveProject: activeProject !== null,
     isGitRepo,
     showEnvironmentIndicator: showComposerEnvironmentIndicator,
     hostsRestingComposerControls: routeKind === "server" && restingComposerControlsVisible,
+    hasUsageLine: hasComposerUsageLine,
   });
   const terminalShortcutLabelOptions = useMemo(
     () => ({
@@ -10075,10 +10094,8 @@ export default function ChatView(props: ChatViewProps) {
                             providerCatalogKnown={serverConfig !== null}
                             activeProjectDefaultModelSelection={activeProjectDefaultModelSelection}
                             activeThreadModelSelection={activeThread?.modelSelection}
-                            activeContextWindow={activeContextWindow}
                             compactThreadUnavailable={compactThreadUnavailable}
                             compactDisabled={compactDisabled}
-                            compactDisabledReason={compactDisabledReason}
                             resolvedTheme={resolvedTheme}
                             settings={settings}
                             keybindings={keybindings}
@@ -10182,6 +10199,7 @@ export default function ChatView(props: ChatViewProps) {
                                 availableEnvironments={logicalProjectEnvironments}
                                 composerControlsHostRef={setRestingComposerControlsHost}
                                 contextStripVisible={showComposerContextStrip}
+                                {...(hasComposerUsageLine ? { usage: composerUsage } : {})}
                               />
                             </div>
                           )}
