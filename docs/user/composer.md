@@ -154,9 +154,9 @@ provider supports it.
 
 On web and desktop, the strip below the composer shows your provider's current
 session limit (for example `5h 42% · resets in 1h 20m`) whenever the provider reports
-one. Turn on **Context tokens in composer** in Settings → General to add the
-thread's context window usage in front of it, and pick how it reads with
-**Context token display**.
+one, with the thread's context window usage in front of it. Pick how the
+context reads with **Context token display** in Settings → General, or turn
+**Context tokens in composer** off to keep just the session limit.
 
 ## Context in your message
 
