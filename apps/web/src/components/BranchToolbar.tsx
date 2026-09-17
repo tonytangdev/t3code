@@ -1,5 +1,6 @@
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import { ComposerUsageLine, type ComposerUsageLineProps } from "./chat/ComposerUsageLine";
 import {
   ChevronDownIcon,
   FolderGit2Icon,
@@ -87,6 +88,8 @@ interface BranchToolbarProps {
   onEnvironmentChange?: (environmentId: EnvironmentId) => void;
   composerControlsHostRef?: (element: HTMLDivElement | null) => void;
   contextStripVisible?: boolean;
+  /** Context and session usage for the thread; sits at the strip's trailing edge. */
+  usage?: Omit<ComposerUsageLineProps, "environmentId" | "compact">;
 }
 
 interface MobileRunContextSelectorProps {
@@ -502,6 +505,7 @@ export const BranchToolbar = memo(function BranchToolbar({
   onEnvironmentChange,
   composerControlsHostRef,
   contextStripVisible = true,
+  usage,
 }: BranchToolbarProps) {
   const branchSelectorRef = useRef<BranchToolbarBranchSelectorHandle>(null);
   const threadRef = useMemo(
@@ -686,11 +690,23 @@ export const BranchToolbar = memo(function BranchToolbar({
         />
       ) : null}
 
+      {usage ? (
+        <ComposerUsageLine
+          {...usage}
+          environmentId={environmentId}
+          compact={labelsOverflow}
+          className="ml-auto"
+        />
+      ) : null}
+
       {showGitControls ? (
         <BranchToolbarBranchSelector
           forceNewWorktree={forceNewWorktree}
           ref={branchSelectorRef}
-          className="min-w-0 flex-initial justify-end @3xl/composer-surface:ml-auto"
+          className={cn(
+            "min-w-0 flex-initial justify-end",
+            !usage && "@3xl/composer-surface:ml-auto",
+          )}
           environmentId={environmentId}
           threadId={threadId}
           {...(draftId ? { draftId } : {})}

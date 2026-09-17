@@ -358,6 +358,18 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["composer rest resting scroll wheel conversation timeline shrink minimize"],
   },
   {
+    id: "composer-context-tokens",
+    title: "Context tokens in composer",
+    to: "/settings/general",
+    searchTerms: ["context window meter usage tokens footer session limit indicator"],
+  },
+  {
+    id: "context-token-display",
+    title: "Context token display",
+    to: "/settings/general",
+    searchTerms: ["context window used maximum percent format composer footer"],
+  },
+  {
     id: "send-shortcut",
     title: "Send shortcut",
     to: "/settings/general",
@@ -463,12 +475,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     title: "Plan mode (legacy)",
     to: "/settings/general",
     searchTerms: ["build plan composer old"],
-  },
-  {
-    id: "legacy-context-window-indicator",
-    title: "Context window indicator (legacy)",
-    to: "/settings/general",
-    searchTerms: ["composer meter usage tokens circle old"],
   },
   {
     id: "legacy-sidebar",

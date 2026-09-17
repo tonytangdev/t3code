@@ -431,6 +431,7 @@ describe("shouldShowComposerContextStrip", () => {
         isGitRepo: false,
         showEnvironmentIndicator: true,
         hostsRestingComposerControls: false,
+        hasUsageLine: false,
       }),
     ).toBe(true);
   });
@@ -442,8 +443,21 @@ describe("shouldShowComposerContextStrip", () => {
         isGitRepo: false,
         showEnvironmentIndicator: false,
         hostsRestingComposerControls: false,
+        hasUsageLine: false,
       }),
     ).toBe(false);
+  });
+
+  it("keeps the strip for a usage line in a non-Git thread", () => {
+    expect(
+      shouldShowComposerContextStrip({
+        hasActiveProject: true,
+        isGitRepo: false,
+        showEnvironmentIndicator: false,
+        hostsRestingComposerControls: false,
+        hasUsageLine: true,
+      }),
+    ).toBe(true);
   });
 
   it("keeps the strip for visible resting composer controls in a non-Git thread", () => {
@@ -453,6 +467,7 @@ describe("shouldShowComposerContextStrip", () => {
         isGitRepo: false,
         showEnvironmentIndicator: false,
         hostsRestingComposerControls: true,
+        hasUsageLine: false,
       }),
     ).toBe(true);
   });
@@ -464,6 +479,7 @@ describe("shouldShowComposerContextStrip", () => {
         isGitRepo: true,
         showEnvironmentIndicator: false,
         hostsRestingComposerControls: false,
+        hasUsageLine: false,
       }),
     ).toBe(true);
   });

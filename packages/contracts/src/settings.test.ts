@@ -584,6 +584,19 @@ describe("ClientSettings context window meter", () => {
       decodeClientSettingsPatch({ contextWindowMeterEnabled: true }).contextWindowMeterEnabled,
     ).toBe(true);
   });
+
+  it("defaults the context token display to used tokens and validates the choices", () => {
+    expect(decodeClientSettings({}).contextTokenDisplay).toBe("used");
+    for (const contextTokenDisplay of ["used", "used-of-max", "percent"] as const) {
+      expect(decodeClientSettings({ contextTokenDisplay }).contextTokenDisplay).toBe(
+        contextTokenDisplay,
+      );
+      expect(decodeClientSettingsPatch({ contextTokenDisplay }).contextTokenDisplay).toBe(
+        contextTokenDisplay,
+      );
+    }
+    expect(() => decodeClientSettingsPatch({ contextTokenDisplay: "ring" })).toThrow();
+  });
 });
 
 describe("ClientSettings send shortcut", () => {
