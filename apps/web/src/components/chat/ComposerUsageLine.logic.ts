@@ -64,20 +64,20 @@ export function formatContextValue(
 
 /**
  * Segments for the composer footer's usage line. `contextDisplay: null` hides
- * the context segment; `compact` keeps only the session so the narrow footer
- * still shows how much of the current window is left. An expired window reads
- * as empty until the next probe replaces it.
+ * the context segment. An expired window reads as empty until the next probe
+ * replaces it. Compact mode is presentational: the strip's overflow measurement
+ * assumes the needed width does not depend on whether it is already compact,
+ * so the component always mounts every segment and collapses the extras with CSS.
  */
 export function buildComposerUsageLine(input: {
   readonly contextWindow: ContextWindowSnapshot | null;
   readonly contextDisplay: ContextTokenDisplay | null;
   readonly limits: ServerProviderUsageLimits | null | undefined;
   readonly now: number;
-  readonly compact: boolean;
 }): ReadonlyArray<ComposerUsageSegment> {
   const segments: ComposerUsageSegment[] = [];
 
-  if (!input.compact && input.contextWindow && input.contextDisplay) {
+  if (input.contextWindow && input.contextDisplay) {
     const usedPercentage = input.contextWindow.usedPercentage ?? null;
     segments.push({
       id: "context",
@@ -103,7 +103,7 @@ export function buildComposerUsageLine(input: {
     percent: Math.round(usedPercent),
   });
 
-  if (!input.compact && untilReset !== null && !expired) {
+  if (untilReset !== null && !expired) {
     segments.push({
       id: "reset",
       ...(untilReset < MINUTE

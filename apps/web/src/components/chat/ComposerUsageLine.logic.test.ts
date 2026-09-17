@@ -110,7 +110,6 @@ describe("formatContextValue", () => {
         contextDisplay: "used",
         limits: null,
         now: NOW,
-        compact: false,
       })[0]?.percent,
     ).toBeNull();
   });
@@ -124,7 +123,6 @@ describe("buildComposerUsageLine", () => {
         contextDisplay: "used",
         limits: limits([sessionWindow()]),
         now: NOW,
-        compact: false,
       }),
     ).toEqual([
       { id: "context", label: "ctx", value: "62k", tone: "muted", percent: 31 },
@@ -139,7 +137,6 @@ describe("buildComposerUsageLine", () => {
       contextDisplay: null,
       limits: limits([sessionWindow()]),
       now: NOW,
-      compact: false,
     });
     expect(line.map((segment) => segment.id)).toEqual(["session", "reset"]);
     expect(
@@ -148,7 +145,6 @@ describe("buildComposerUsageLine", () => {
         contextDisplay: "used",
         limits: limits([]),
         now: NOW,
-        compact: false,
       }),
     ).toEqual([]);
   });
@@ -160,7 +156,6 @@ describe("buildComposerUsageLine", () => {
         contextDisplay: null,
         limits: limits([sessionWindow({ usedPercent })]),
         now: NOW,
-        compact: false,
       })[0]?.tone;
     expect(at(42)).toBe("muted");
     expect(at(80)).toBe("warning");
@@ -173,7 +168,6 @@ describe("buildComposerUsageLine", () => {
       contextDisplay: null,
       limits: limits([sessionWindow({ resetsAt: new Date(NOW + 30_000).toISOString() })]),
       now: NOW,
-      compact: false,
     });
     expect(line.map((segment) => segment.value)).toEqual(["42%", "resetting…"]);
     expect(line[1]?.label).toBe("");
@@ -185,7 +179,6 @@ describe("buildComposerUsageLine", () => {
       contextDisplay: null,
       limits: limits([sessionWindow({ resetsAt: new Date(NOW - MINUTE).toISOString() })]),
       now: NOW,
-      compact: false,
     });
     expect(line).toEqual([{ id: "session", label: "5h", value: "0%", tone: "muted", percent: 0 }]);
   });
@@ -196,18 +189,6 @@ describe("buildComposerUsageLine", () => {
       contextDisplay: null,
       limits: limits([sessionWindow({ resetsAt: undefined })]),
       now: NOW,
-      compact: false,
-    });
-    expect(line.map((segment) => segment.id)).toEqual(["session"]);
-  });
-
-  it("keeps only the session segment when compact", () => {
-    const line = buildComposerUsageLine({
-      contextWindow: contextWindow(),
-      contextDisplay: "used",
-      limits: limits([sessionWindow()]),
-      now: NOW,
-      compact: true,
     });
     expect(line.map((segment) => segment.id)).toEqual(["session"]);
   });
@@ -219,7 +200,6 @@ describe("buildComposerUsageLine", () => {
         contextDisplay: null,
         limits: { ...limits([sessionWindow()]), unavailable: { reason: "probeFailed" } },
         now: NOW,
-        compact: false,
       }),
     ).toEqual([]);
   });

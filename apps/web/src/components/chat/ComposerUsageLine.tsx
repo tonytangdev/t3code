@@ -24,6 +24,11 @@ const TONE_FILL: Record<ComposerUsageTone, string> = {
   error: "bg-destructive",
 };
 
+// Collapses under the strip's data-compact group; `overflow-hidden` keeps the
+// content's scrollWidth measurable while the box is zero width.
+const COLLAPSIBLE_CLASS =
+  "block min-w-0 overflow-hidden group-data-[compact]/composer-context:max-w-0";
+
 /**
  * `87k ctx` and `5h 74% · resets in 19m` in the strip below the composer, each over a
  * hairline bar filled to its percentage so the headroom reads without
@@ -31,18 +36,22 @@ const TONE_FILL: Record<ComposerUsageTone, string> = {
  * minute clock keeps the countdown honest. Limits refresh on mount and window
  * focus through the client-runtime throttle so a thread open all day does not
  * hammer the provider.
+ *
+ * When the strip is compact only the session percentage stays visible. The
+ * context block and reset countdown stay mounted and collapse via CSS, marked as
+ * composer labels, so the strip's overflow measurement reserves their width and
+ * does not flip between compact and expanded on every render.
  */
 export interface ComposerUsageLineProps {
   environmentId: EnvironmentId;
   contextWindow: ContextWindowSnapshot | null;
   contextDisplay: ContextTokenDisplay | null;
   limits: ServerProviderUsageLimits | null | undefined;
-  compact: boolean;
   className?: string;
 }
 
 export const ComposerUsageLine = memo(function ComposerUsageLine(props: ComposerUsageLineProps) {
-  const { environmentId, contextWindow, contextDisplay, limits, compact, className } = props;
+  const { environmentId, contextWindow, contextDisplay, limits, className } = props;
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
     reportFailure: false,
   });
@@ -67,9 +76,8 @@ export const ComposerUsageLine = memo(function ComposerUsageLine(props: Composer
         contextDisplay,
         limits,
         now: Date.parse(`${nowMinute}:00.000Z`),
-        compact,
       }),
-    [compact, contextDisplay, contextWindow, limits, nowMinute],
+    [contextDisplay, contextWindow, limits, nowMinute],
   );
   const context = segments.find((segment) => segment.id === "context");
   const session = segments.find((segment) => segment.id === "session");
@@ -85,17 +93,22 @@ export const ComposerUsageLine = memo(function ComposerUsageLine(props: Composer
       )}
     >
       {context ? (
-        <UsageBlock percent={context.percent} tone={context.tone}>
-          <span className={TONE_TEXT[context.tone]}>{context.value}</span>
-          <span className="text-muted-foreground/70">{context.label}</span>
-        </UsageBlock>
+        <span data-composer-label className={COLLAPSIBLE_CLASS}>
+          <UsageBlock percent={context.percent} tone={context.tone}>
+            <span className={TONE_TEXT[context.tone]}>{context.value}</span>
+            <span className="text-muted-foreground/70">{context.label}</span>
+          </UsageBlock>
+        </span>
       ) : null}
       {session ? (
         <UsageBlock percent={session.percent} tone={session.tone}>
           <span className="text-muted-foreground/70">{session.label}</span>
           <span className={TONE_TEXT[session.tone]}>{session.value}</span>
           {reset ? (
-            <span className="text-muted-foreground/55">
+            <span
+              data-composer-label
+              className={cn(COLLAPSIBLE_CLASS, "text-muted-foreground/55 whitespace-nowrap")}
+            >
               <span aria-hidden="true">· </span>
               {reset.label ? `${reset.label} ` : ""}
               {reset.value}

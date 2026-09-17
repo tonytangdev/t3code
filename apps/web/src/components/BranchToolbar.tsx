@@ -89,7 +89,7 @@ interface BranchToolbarProps {
   composerControlsHostRef?: (element: HTMLDivElement | null) => void;
   contextStripVisible?: boolean;
   /** Context and session usage for the thread; sits at the strip's trailing edge. */
-  usage?: Omit<ComposerUsageLineProps, "environmentId" | "compact">;
+  usage?: Omit<ComposerUsageLineProps, "environmentId">;
 }
 
 interface MobileRunContextSelectorProps {
@@ -691,12 +691,7 @@ export const BranchToolbar = memo(function BranchToolbar({
       ) : null}
 
       {usage ? (
-        <ComposerUsageLine
-          {...usage}
-          environmentId={environmentId}
-          compact={labelsOverflow}
-          className="ml-auto"
-        />
+        <ComposerUsageLine {...usage} environmentId={environmentId} className="ml-auto" />
       ) : null}
 
       {showGitControls ? (
