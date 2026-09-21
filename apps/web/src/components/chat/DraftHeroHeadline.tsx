@@ -3,7 +3,7 @@ import { useComposerDraftStore } from "~/composerDraftStore";
 import { resolveEnvironmentMachineKind, type ScopedProjectRef } from "@t3tools/contracts";
 import { scopedProjectKey, scopeProjectRef } from "@t3tools/client-runtime/environment";
 import { FolderPlusIcon } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { openCommandPalette } from "~/commandPaletteBus";
 import { useClientSettings } from "~/hooks/useSettings";
@@ -12,7 +12,9 @@ import { selectProjectGroupingSettings } from "~/logicalProject";
 import {
   buildSidebarProjectPickerEntries,
   buildSidebarProjectSnapshots,
+  filterSidebarProjectPickerEntries,
   projectGroupsSpanEnvironments,
+  type SidebarProjectPickerEntry,
 } from "~/sidebarProjectGrouping";
 import { useProjects, useThreadShells } from "~/state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
@@ -20,16 +22,22 @@ import { ProjectEnvironmentBadge } from "../ProjectEnvironmentBadge";
 import { ProjectFavicon } from "../ProjectFavicon";
 import { sortLogicalProjectsForSidebar } from "../Sidebar.logic";
 import {
-  Menu,
-  MenuItem,
-  MenuPopup,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuSeparator,
-  MenuTrigger,
-} from "../ui/menu";
+  Combobox,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopup,
+  ComboboxSearchInput,
+  ComboboxTrigger,
+} from "../ui/combobox";
+import { Separator } from "../ui/separator";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
+
+const NEW_PROJECT_ITEM = "__new-project__";
+
+function toProjectPickerItems(entries: ReadonlyArray<SidebarProjectPickerEntry>) {
+  return [...entries.map((entry) => entry.group.projectKey), NEW_PROJECT_ITEM];
+}
 
 interface DraftHeroHeadlineProps {
   readonly draftId: DraftId | null;
@@ -117,6 +125,19 @@ export function DraftHeroHeadline({
     () => new Map(projectPickerEntries.map((entry) => [entry.group.projectKey, entry] as const)),
     [projectPickerEntries],
   );
+  const [projectQuery, setProjectQuery] = useState("");
+  const filteredProjectPickerEntries = useMemo(
+    () => filterSidebarProjectPickerEntries(projectPickerEntries, projectQuery),
+    [projectPickerEntries, projectQuery],
+  );
+  const projectPickerItems = useMemo(
+    () => toProjectPickerItems(projectPickerEntries),
+    [projectPickerEntries],
+  );
+  const filteredProjectPickerItems = useMemo(
+    () => toProjectPickerItems(filteredProjectPickerEntries),
+    [filteredProjectPickerEntries],
+  );
   const activeProjectGroup =
     activeProjectRef === null
       ? null
@@ -125,14 +146,63 @@ export function DraftHeroHeadline({
             (projectRef) => scopedProjectKey(projectRef) === scopedProjectKey(activeProjectRef),
           ),
         ) ?? null);
-  const activeProjectKey = activeProjectGroup?.projectKey ?? "";
+  const activeProjectKey = activeProjectGroup?.projectKey ?? null;
   const activeProjectDisplayName = activeProjectGroup?.displayName ?? activeProjectTitle;
   const hasResolvedProject = activeProjectTitle !== null;
   const canChooseProject = projectPickerEntries.length > 0;
   const shouldShowProjectMenu = canChooseProject;
 
+  const selectProject = (value: string | null) => {
+    if (value === NEW_PROJECT_ITEM) {
+      openAddProject();
+      return;
+    }
+    const entry = value === null ? undefined : projectEntryByKey.get(value);
+    if (!entry || value === activeProjectKey) {
+      return;
+    }
+    const project = entry.targetProject;
+    if (!draftId) {
+      return;
+    }
+    // Project selection changes the target of the open draft in
+    // place. The prompt stays in the same composer session, so the
+    // sidebar only gets a draft row if the user later navigates away.
+    const currentDraft = getComposerDraft(draftId);
+    setLogicalProjectDraftThreadId(
+      entry.group.projectKey,
+      scopeProjectRef(project.environmentId, project.id),
+      draftId,
+    );
+    if (!hasExplicitComposerModelSelection(currentDraft)) {
+      applyStickyState(draftId);
+      const environmentSettings = environments.find(
+        (environment) => environment.environmentId === project.environmentId,
+      )?.serverConfig?.settings;
+      const defaultModelSelection = environmentSettings
+        ? resolveProjectSettings(environmentSettings, project.id, project).settings
+            .defaultModelSelection
+        : project.defaultModelSelection;
+      if (defaultModelSelection) {
+        setModelSelection(draftId, defaultModelSelection, {
+          replaceOptions: true,
+        });
+      }
+    }
+  };
+
   const projectSelector = shouldShowProjectMenu ? (
-    <Menu>
+    <Combobox
+      items={projectPickerItems}
+      filteredItems={filteredProjectPickerItems}
+      filter={null}
+      autoHighlight
+      value={activeProjectKey}
+      onValueChange={selectProject}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setProjectQuery("");
+      }}
+    >
       <Tooltip>
         <TooltipTrigger
           render={
@@ -140,7 +210,7 @@ export function DraftHeroHeadline({
             // project title) so the hero sentence reads naturally: an
             // aria-label here would replace the title with an action phrase
             // mid-sentence and baffle screen-reader users.
-            <MenuTrigger className="pointer-events-auto inline-block max-w-64 truncate border-foreground/60 border-b border-dotted align-baseline text-foreground transition-colors hover:border-foreground/80 focus-visible:rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" />
+            <ComboboxTrigger className="pointer-events-auto inline-block max-w-64 truncate border-foreground/60 border-b border-dotted align-baseline text-foreground transition-colors hover:border-foreground/80 focus-visible:rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" />
           }
         >
           {activeProjectDisplayName ?? "Choose a project"}
@@ -151,51 +221,24 @@ export function DraftHeroHeadline({
           </TooltipPopup>
         ) : null}
       </Tooltip>
-      <MenuPopup align="center" className="max-h-80 min-w-40! w-max max-w-64 overflow-y-auto">
-        <MenuRadioGroup
-          value={activeProjectKey}
-          onValueChange={(value) => {
-            const entry = projectEntryByKey.get(value as string);
-            if (!entry || value === activeProjectKey) {
-              return;
-            }
-            const project = entry.targetProject;
-            if (!draftId) {
-              return;
-            }
-            // Project selection changes the target of the open draft in
-            // place. The prompt stays in the same composer session, so the
-            // sidebar only gets a draft row if the user later navigates away.
-            const currentDraft = getComposerDraft(draftId);
-            setLogicalProjectDraftThreadId(
-              entry.group.projectKey,
-              scopeProjectRef(project.environmentId, project.id),
-              draftId,
-            );
-            if (!hasExplicitComposerModelSelection(currentDraft)) {
-              applyStickyState(draftId);
-              const environmentSettings = environments.find(
-                (environment) => environment.environmentId === project.environmentId,
-              )?.serverConfig?.settings;
-              const defaultModelSelection = environmentSettings
-                ? resolveProjectSettings(environmentSettings, project.id, project).settings
-                    .defaultModelSelection
-                : project.defaultModelSelection;
-              if (defaultModelSelection) {
-                setModelSelection(draftId, defaultModelSelection, {
-                  replaceOptions: true,
-                });
-              }
-            }
-          }}
-        >
-          {projectPickerEntries.map(({ group }) => {
-            return (
-              <MenuRadioItem
+      <ComboboxPopup align="center" className="w-72 flex-col">
+        <ComboboxSearchInput
+          aria-label="Search projects"
+          placeholder="Search projects..."
+          value={projectQuery}
+          onChange={(event) => setProjectQuery(event.target.value)}
+        />
+        <ComboboxList className="max-h-72">
+          {filteredProjectPickerEntries.length === 0 ? (
+            <p className="p-2 text-center text-sm text-muted-foreground">No projects found.</p>
+          ) : (
+            filteredProjectPickerEntries.map(({ group }, index) => (
+              <ComboboxItem
                 key={group.projectKey}
+                index={index}
                 value={group.projectKey}
-                closeOnClick
-                className="[&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
+                hideIndicator
+                contentClassName="flex min-w-0 items-center gap-2"
               >
                 <ProjectFavicon project={group} className="size-4 shrink-0" />
                 <Tooltip>
@@ -213,17 +256,24 @@ export function DraftHeroHeadline({
                     machineByEnvironmentId={environmentMachineById}
                   />
                 ) : null}
-              </MenuRadioItem>
-            );
-          })}
-        </MenuRadioGroup>
-        <MenuSeparator />
-        <MenuItem onClick={openAddProject}>
-          <FolderPlusIcon />
-          New project
-        </MenuItem>
-      </MenuPopup>
-    </Menu>
+              </ComboboxItem>
+            ))
+          )}
+          {filteredProjectPickerEntries.length > 0 ? (
+            <Separator className="mx-2 my-1 w-auto" />
+          ) : null}
+          <ComboboxItem
+            index={filteredProjectPickerEntries.length}
+            value={NEW_PROJECT_ITEM}
+            hideIndicator
+            contentClassName="flex min-w-0 items-center gap-2"
+          >
+            <FolderPlusIcon />
+            New project
+          </ComboboxItem>
+        </ComboboxList>
+      </ComboboxPopup>
+    </Combobox>
   ) : (
     <button
       type="button"

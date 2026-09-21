@@ -175,3 +175,20 @@ export function buildSidebarProjectPickerEntries(input: {
     ...entries.slice(preferredIndex + 1),
   ];
 }
+
+export function filterSidebarProjectPickerEntries(
+  entries: ReadonlyArray<SidebarProjectPickerEntry>,
+  query: string,
+): ReadonlyArray<SidebarProjectPickerEntry> {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery.length === 0) return entries;
+  return entries.filter(
+    ({ group }) =>
+      group.displayName.toLowerCase().includes(normalizedQuery) ||
+      group.memberProjects.some(
+        (project) =>
+          project.title.toLowerCase().includes(normalizedQuery) ||
+          project.workspaceRoot.toLowerCase().includes(normalizedQuery),
+      ),
+  );
+}

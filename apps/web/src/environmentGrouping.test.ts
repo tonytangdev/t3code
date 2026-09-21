@@ -12,6 +12,7 @@ import {
   buildPhysicalToLogicalProjectKeyMap,
   buildSidebarProjectPickerEntries,
   buildSidebarProjectSnapshots,
+  filterSidebarProjectPickerEntries,
   projectGroupsSpanEnvironments,
 } from "./sidebarProjectGrouping";
 import { orderItemsByPreferredIds } from "./components/Sidebar.logic";
@@ -356,6 +357,46 @@ describe("environment grouping", () => {
     });
     expect(entries[0]?.isPreferred).toBe(true);
     expect(entries[1]?.group.displayName).toBe("separate");
+  });
+
+  it("filters picker entries by display name, member title or workspace path, keeping order", () => {
+    const journaling = makeProject({
+      id: ProjectId.make("journaling"),
+      title: "fontsninja-journaling",
+      workspaceRoot: "/Users/me/Workspace/fontsninja-journaling",
+    });
+    const api = makeProject({
+      id: ProjectId.make("api"),
+      title: "fontradar-v2-api",
+      workspaceRoot: "/Users/me/Workspace/fontradar-v2-api",
+      repositoryIdentity,
+    });
+    const apiMirror = makeProject({
+      id: ProjectId.make("api-mirror"),
+      environmentId: remoteEnvironmentId,
+      title: "radar-mirror",
+      workspaceRoot: "/srv/checkouts/radar",
+      repositoryIdentity,
+    });
+    const entries = buildSidebarProjectPickerEntries({
+      groups: buildSidebarProjectSnapshots({
+        projects: [journaling, api, apiMirror],
+        settings: defaultGroupingSettings,
+        primaryEnvironmentId,
+        resolveEnvironmentLabel: () => null,
+      }),
+      preferredProjectRef: null,
+    });
+    const names = (query: string) =>
+      filterSidebarProjectPickerEntries(entries, query).map((entry) => entry.group.displayName);
+
+    expect(names("")).toEqual(["fontsninja-journaling", "fontradar-v2-api"]);
+    expect(names("   ")).toEqual(["fontsninja-journaling", "fontradar-v2-api"]);
+    expect(names("V2-API")).toEqual(["fontradar-v2-api"]);
+    expect(names("mirror")).toEqual(["fontradar-v2-api"]);
+    expect(names("srv/checkouts")).toEqual(["fontradar-v2-api"]);
+    expect(names("me/workspace")).toEqual(["fontsninja-journaling", "fontradar-v2-api"]);
+    expect(names("nope")).toEqual([]);
   });
 
   it("keeps the current environment when available and falls back otherwise", () => {
