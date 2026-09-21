@@ -182,13 +182,38 @@ export function filterSidebarProjectPickerEntries(
 ): ReadonlyArray<SidebarProjectPickerEntry> {
   const normalizedQuery = query.trim().toLowerCase();
   if (normalizedQuery.length === 0) return entries;
-  return entries.filter(
-    ({ group }) =>
-      group.displayName.toLowerCase().includes(normalizedQuery) ||
-      group.memberProjects.some(
-        (project) =>
-          project.title.toLowerCase().includes(normalizedQuery) ||
-          project.workspaceRoot.toLowerCase().includes(normalizedQuery),
-      ),
+  return entries
+    .map((entry, index) => ({ entry, index, rank: rankProjectPickerMatch(entry, normalizedQuery) }))
+    .filter(({ rank }) => rank !== null)
+    .sort((a, b) => a.rank! - b.rank! || a.index - b.index)
+    .map(({ entry }) => entry);
+}
+
+const enum ProjectPickerMatchRank {
+  NamePrefix = 0,
+  NameSubstring = 1,
+  PathSubstring = 2,
+}
+
+function rankProjectPickerMatch(
+  { group }: SidebarProjectPickerEntry,
+  normalizedQuery: string,
+): ProjectPickerMatchRank | null {
+  const names = [group.displayName, ...group.memberProjects.map((project) => project.title)].map(
+    (name) => name.toLowerCase(),
   );
+  if (names.some((name) => name.startsWith(normalizedQuery))) {
+    return ProjectPickerMatchRank.NamePrefix;
+  }
+  if (names.some((name) => name.includes(normalizedQuery))) {
+    return ProjectPickerMatchRank.NameSubstring;
+  }
+  if (
+    group.memberProjects.some((project) =>
+      project.workspaceRoot.toLowerCase().includes(normalizedQuery),
+    )
+  ) {
+    return ProjectPickerMatchRank.PathSubstring;
+  }
+  return null;
 }

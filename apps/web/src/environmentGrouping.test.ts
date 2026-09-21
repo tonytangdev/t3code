@@ -399,6 +399,33 @@ describe("environment grouping", () => {
     expect(names("nope")).toEqual([]);
   });
 
+  it("ranks name matches ahead of path-only matches so a shared parent directory does not bury a project", () => {
+    const makeWorkspaceProject = (title: string) =>
+      makeProject({
+        id: ProjectId.make(title),
+        title,
+        workspaceRoot: `/Users/me/Workspace/${title}`,
+      });
+    const entries = buildSidebarProjectPickerEntries({
+      groups: buildSidebarProjectSnapshots({
+        projects: [
+          makeWorkspaceProject("t3code"),
+          makeWorkspaceProject("tools"),
+          makeWorkspaceProject("homework"),
+          makeWorkspaceProject("Workspace"),
+        ],
+        settings: defaultGroupingSettings,
+        primaryEnvironmentId,
+        resolveEnvironmentLabel: () => null,
+      }),
+      preferredProjectRef: null,
+    });
+    const names = (query: string) =>
+      filterSidebarProjectPickerEntries(entries, query).map((entry) => entry.group.displayName);
+
+    expect(names("work")).toEqual(["Workspace", "homework", "t3code", "tools"]);
+  });
+
   it("keeps the current environment when available and falls back otherwise", () => {
     const currentPrimary = makeProject({ repositoryIdentity });
     const currentRemote = makeProject({
