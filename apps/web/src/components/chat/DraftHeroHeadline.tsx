@@ -31,6 +31,7 @@ import {
 } from "../ui/combobox";
 import { Separator } from "../ui/separator";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { InlineButton } from "../ui/button";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 
 const NEW_PROJECT_ITEM = "__new-project__";
@@ -210,18 +211,19 @@ export function DraftHeroHeadline({
             // project title) so the hero sentence reads naturally: an
             // aria-label here would replace the title with an action phrase
             // mid-sentence and baffle screen-reader users.
-            <ComboboxTrigger className="pointer-events-auto inline-block max-w-64 truncate border-foreground/60 border-b border-dotted align-baseline text-foreground transition-colors hover:border-foreground/80 focus-visible:rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" />
+            <ComboboxTrigger
+              render={<InlineButton tone="picker" />}
+              className="pointer-events-auto max-w-64 align-baseline"
+            />
           }
         >
-          {activeProjectDisplayName ?? "Choose a project"}
+          <span className="min-w-0 truncate">{activeProjectDisplayName ?? "Choose a project"}</span>
         </TooltipTrigger>
         {activeProjectDisplayName ? (
-          <TooltipPopup side="top" className="max-w-80">
-            {activeProjectDisplayName}
-          </TooltipPopup>
+          <TooltipPopup side="top">{activeProjectDisplayName}</TooltipPopup>
         ) : null}
       </Tooltip>
-      <ComboboxPopup align="center" className="w-72 flex-col">
+      <ComboboxPopup align="center" className="w-72">
         <ComboboxSearchInput
           aria-label="Search projects"
           placeholder="Search projects..."
@@ -238,16 +240,13 @@ export function DraftHeroHeadline({
                 index={index}
                 value={group.projectKey}
                 hideIndicator
-                contentClassName="flex min-w-0 items-center gap-2"
               >
                 <ProjectFavicon project={group} className="size-4 shrink-0" />
                 <Tooltip>
                   <TooltipTrigger render={<span className="block min-w-0 truncate" />}>
                     {group.displayName}
                   </TooltipTrigger>
-                  <TooltipPopup side="top" className="max-w-80">
-                    {group.displayName}
-                  </TooltipPopup>
+                  <TooltipPopup side="top">{group.displayName}</TooltipPopup>
                 </Tooltip>
                 {showProjectEnvironments ? (
                   <ProjectEnvironmentBadge
@@ -266,7 +265,6 @@ export function DraftHeroHeadline({
             index={filteredProjectPickerEntries.length}
             value={NEW_PROJECT_ITEM}
             hideIndicator
-            contentClassName="flex min-w-0 items-center gap-2"
           >
             <FolderPlusIcon />
             New project
