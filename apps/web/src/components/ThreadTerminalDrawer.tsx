@@ -318,6 +318,7 @@ interface TerminalViewportProps {
   providerInstanceId?: ProviderInstanceId;
   onSessionExited: () => void;
   onAddTerminalContext?: (selection: TerminalContextSelection) => void;
+  onCommandSubmitted?: (() => void) | undefined;
   focusRequestId: number;
   autoFocus: boolean;
   visible: boolean;
@@ -344,6 +345,7 @@ export function TerminalViewport({
   providerInstanceId,
   onSessionExited,
   onAddTerminalContext,
+  onCommandSubmitted,
   focusRequestId,
   autoFocus,
   visible,
@@ -385,6 +387,9 @@ export function TerminalViewport({
     onAddTerminalContext?.(selection);
   });
   const canAddSelectionToChat = useEffectEvent(() => onAddTerminalContext !== undefined);
+  const handleCommandSubmitted = useEffectEvent(() => {
+    onCommandSubmitted?.();
+  });
   const readTerminalLabel = useEffectEvent(() => terminalLabel);
   const terminalFontFamily = useClientSettings((settings) =>
     resolveTerminalFontPreference({
@@ -829,6 +834,9 @@ export function TerminalViewport({
       }
 
       function handleData(data: string): void {
+        if (data.includes("\r")) {
+          handleCommandSubmitted();
+        }
         void (async () => {
           const result = await writeTerminal(data);
           if (result._tag === "Success" || isAtomCommandInterrupted(result)) return;
@@ -1011,6 +1019,7 @@ interface ThreadTerminalDrawerProps {
   onCloseTerminal: (terminalId: string) => void;
   onHeightChange: (height: number) => void;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
+  onCommandSubmitted?: (() => void) | undefined;
   keybindings: ResolvedKeybindingsConfig;
   /** Prefer server-provided tab titles when present (e.g. active subprocess name). */
   terminalLabelsById?: ReadonlyMap<string, string>;
@@ -1072,6 +1081,7 @@ export default function ThreadTerminalDrawer({
   onCloseTerminal,
   onHeightChange,
   onAddTerminalContext,
+  onCommandSubmitted,
   keybindings,
   terminalLabelsById,
   terminalLaunchLocationsById,
@@ -1542,6 +1552,7 @@ export default function ThreadTerminalDrawer({
                             : {})}
                           onSessionExited={() => onCloseTerminal(terminalId)}
                           onAddTerminalContext={onAddTerminalContext}
+                          onCommandSubmitted={onCommandSubmitted}
                           focusRequestId={focusRequestId}
                           autoFocus={terminalId === resolvedActiveTerminalId}
                           visible={visible}
@@ -1572,6 +1583,7 @@ export default function ThreadTerminalDrawer({
                     : {})}
                   onSessionExited={() => onCloseTerminal(resolvedActiveTerminalId)}
                   onAddTerminalContext={onAddTerminalContext}
+                  onCommandSubmitted={onCommandSubmitted}
                   focusRequestId={focusRequestId}
                   autoFocus
                   visible={visible}

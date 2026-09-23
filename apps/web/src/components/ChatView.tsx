@@ -897,6 +897,7 @@ interface PersistentThreadTerminalDrawerProps {
   closeShortcutLabel: string | undefined;
   keybindings: ResolvedKeybindingsConfig;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
+  onCommandSubmitted?: (() => void) | undefined;
 }
 
 const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDrawer({
@@ -911,6 +912,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
   closeShortcutLabel,
   keybindings,
   onAddTerminalContext,
+  onCommandSubmitted,
 }: PersistentThreadTerminalDrawerProps) {
   const openTerminal = useAtomCommand(terminalEnvironment.open, "terminal open");
   const writeTerminal = useAtomCommand(terminalEnvironment.write, "terminal write");
@@ -1252,6 +1254,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
           onCloseTerminal={closeTerminal}
           onHeightChange={setTerminalHeight}
           onAddTerminalContext={handleAddTerminalContext}
+          onCommandSubmitted={onCommandSubmitted}
           terminalLabelsById={terminalLabelsById}
           terminalLaunchLocationsById={terminalLaunchLocationsById}
         />
@@ -1268,6 +1271,7 @@ interface PersistentThreadTerminalPanelProps {
   focusRequestId: number;
   keybindings: ResolvedKeybindingsConfig;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
+  onCommandSubmitted: () => void;
   onSplitTerminal: () => void;
   onSplitTerminalVertical: () => void;
   onNewTerminal: () => void;
@@ -1287,6 +1291,7 @@ const PersistentThreadTerminalPanel = memo(function PersistentThreadTerminalPane
   focusRequestId,
   keybindings,
   onAddTerminalContext,
+  onCommandSubmitted,
   onSplitTerminal,
   onSplitTerminalVertical,
   onNewTerminal,
@@ -1425,6 +1430,7 @@ const PersistentThreadTerminalPanel = memo(function PersistentThreadTerminalPane
       onCloseTerminal={onCloseTerminal}
       onHeightChange={() => undefined}
       onAddTerminalContext={onAddTerminalContext}
+      onCommandSubmitted={onCommandSubmitted}
       terminalLabelsById={terminalLabelsById}
       terminalLaunchLocationsById={terminalLaunchLocationsById}
       keybindings={keybindings}
@@ -4212,6 +4218,50 @@ export default function ChatView(props: ChatViewProps) {
       writeTerminal,
     ],
   );
+  const terminalPromotedDraftThreadIdRef = useRef<ThreadId | null>(null);
+  // A draft is browser-only until its first message, so a terminal command
+  // alone would never reach the sidebar. The worktree choice stays pending on
+  // the promoted thread and still applies to its first message.
+  const promoteDraftOnTerminalCommand = useCallback(() => {
+    if (!isLocalDraftThread || !activeThread || !activeProject) return;
+    if (terminalPromotedDraftThreadIdRef.current === activeThread.id) return;
+    const sendCtx = composerRef.current?.getSendContext();
+    if (!sendCtx) return;
+    const threadId = activeThread.id;
+    terminalPromotedDraftThreadIdRef.current = threadId;
+    void (async () => {
+      const result = await createThread({
+        environmentId,
+        input: {
+          threadId,
+          projectId: activeProject.id,
+          title: "New thread",
+          modelSelection: createModelSelection(
+            sendCtx.selectedModelSelection.instanceId,
+            sendCtx.selectedModel || activeProjectDefaultModelSelection?.model || DEFAULT_MODEL,
+            sendCtx.selectedModelSelection.options,
+          ),
+          runtimeMode,
+          interactionMode: sendCtx.interactionMode,
+          branch: activeThread.branch,
+          worktreePath: activeThread.worktreePath,
+          createdAt: activeThread.createdAt,
+        },
+      });
+      if (result._tag === "Failure" && terminalPromotedDraftThreadIdRef.current === threadId) {
+        terminalPromotedDraftThreadIdRef.current = null;
+      }
+    })();
+  }, [
+    activeProject,
+    activeProjectDefaultModelSelection?.model,
+    activeThread,
+    composerRef,
+    createThread,
+    environmentId,
+    isLocalDraftThread,
+    runtimeMode,
+  ]);
   const runProjectScript = useCallback(
     async (
       script: ProjectScript,
@@ -4295,6 +4345,7 @@ export default function ChatView(props: ChatViewProps) {
         return;
       }
 
+      promoteDraftOnTerminalCommand();
       const writeResult = await writeTerminal({
         environmentId,
         input: {
@@ -4329,6 +4380,7 @@ export default function ChatView(props: ChatViewProps) {
       runningTerminalIds,
       terminalUiState.activeTerminalId,
       writeTerminal,
+      promoteDraftOnTerminalCommand,
     ],
   );
 
@@ -5864,6 +5916,7 @@ export default function ChatView(props: ChatViewProps) {
     ? (draftThread?.startFromOrigin ?? false)
     : canOverrideServerThreadEnvMode
       ? (pendingServerThreadStartFromOriginByThreadId[activeThread?.id ?? ""] ??
+        draftThread?.startFromOrigin ??
         activeProjectSettings.settings.newWorktreesStartFromOrigin)
       : false;
   const sendEnvMode = resolveSendEnvMode({
@@ -9644,6 +9697,7 @@ export default function ChatView(props: ChatViewProps) {
         focusRequestId={terminalFocusRequestId}
         keybindings={keybindings}
         onAddTerminalContext={addTerminalContextToDraft}
+        onCommandSubmitted={promoteDraftOnTerminalCommand}
         onSplitTerminal={splitPanelTerminal}
         onSplitTerminalVertical={splitPanelTerminalVertical}
         onNewTerminal={addTerminalSurface}
@@ -10342,6 +10396,9 @@ export default function ChatView(props: ChatViewProps) {
             closeShortcutLabel={closeTerminalShortcutLabel ?? undefined}
             keybindings={keybindings}
             onAddTerminalContext={addTerminalContextToDraft}
+            onCommandSubmitted={
+              mountedThreadKey === activeThreadKey ? promoteDraftOnTerminalCommand : undefined
+            }
           />
         ))}
       </div>
