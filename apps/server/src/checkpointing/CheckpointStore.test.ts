@@ -114,6 +114,21 @@ it.layer(TestLayer)("CheckpointStore.layer", (it) => {
         expect(yield* checkpointStore.isGitRepository(tmp)).toBe(true);
       }),
     );
+
+    it.effect("returns false when cwd is ignored by its parent repository", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        const fileSystem = yield* FileSystem.FileSystem;
+        const ignoredCwd = NodePath.join(tmp, "data", "demo");
+        yield* writeTextFile(NodePath.join(tmp, ".gitignore"), "data/\n");
+        yield* fileSystem.makeDirectory(ignoredCwd, { recursive: true });
+        yield* writeTextFile(NodePath.join(ignoredCwd, "index.html"), "<p>demo</p>\n");
+        const checkpointStore = yield* CheckpointStore.CheckpointStore;
+
+        expect(yield* checkpointStore.isGitRepository(ignoredCwd)).toBe(false);
+      }),
+    );
   });
 
   describe("diffCheckpoints", () => {
