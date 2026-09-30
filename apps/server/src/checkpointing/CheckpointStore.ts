@@ -51,7 +51,7 @@ export interface DeleteCheckpointRefsInput {
 export class CheckpointStore extends Context.Service<
   CheckpointStore,
   {
-    /** Check whether cwd is inside a Git worktree. */
+    /** Check whether cwd is inside a Git worktree that can be checkpointed. */
     readonly isGitRepository: (cwd: string) => Effect.Effect<boolean, CheckpointStoreError>;
 
     /**
@@ -117,10 +117,15 @@ export const make = Effect.gen(function* () {
     return handle.driver.checkpoints satisfies VcsCheckpointOps;
   });
 
-  const isGitRepository: CheckpointStore["Service"]["isGitRepository"] = (cwd) =>
-    vcsRegistry
-      .detect({ cwd, requestedKind: "git" })
-      .pipe(Effect.map((repository) => repository !== null));
+  const isGitRepository: CheckpointStore["Service"]["isGitRepository"] = Effect.fn(
+    "isGitRepository",
+  )(function* (cwd) {
+    const handle = yield* vcsRegistry.detect({ cwd, requestedKind: "git" });
+    if (handle === null) return false;
+    // A gitignored cwd inside a parent repository cannot be staged, so it has no checkpoints.
+    const unignored = yield* handle.driver.filterIgnoredPaths(cwd, ["."]);
+    return unignored.length > 0;
+  });
 
   const captureCheckpoint: CheckpointStore["Service"]["captureCheckpoint"] = Effect.fn(
     "captureCheckpoint",
