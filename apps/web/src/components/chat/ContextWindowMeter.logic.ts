@@ -8,7 +8,8 @@ import {
   type ProviderInstanceEntry,
 } from "../../providerInstances";
 
-const CLAUDE_RESUME_COMPACTION_MINUTES = 70;
+// Used when the provider did not report its cache TTL: Claude's 1h cache plus slack.
+const CLAUDE_RESUME_COMPACTION_FALLBACK_MS = 70 * 60_000;
 const CLAUDE_RESUME_COMPACTION_TOKENS = 100_000;
 
 export function providerSupportsManualCompaction(
@@ -59,10 +60,13 @@ export function hasDismissedResumeCompaction(
   });
 }
 
+/** True once a large Claude context's prompt cache has expired, so the next
+    turn would re-read all of it uncached. */
 export function shouldOfferResumeCompaction(input: {
   readonly provider: string | null | undefined;
   readonly usedTokens: number | null | undefined;
   readonly updatedAt: string | null | undefined;
+  readonly promptCacheTtlMs?: number | undefined;
   readonly now: string;
 }): boolean {
   if (
@@ -77,6 +81,6 @@ export function shouldOfferResumeCompaction(input: {
   return (
     Number.isFinite(updatedAt) &&
     Number.isFinite(now) &&
-    now - updatedAt >= CLAUDE_RESUME_COMPACTION_MINUTES * 60_000
+    now - updatedAt >= (input.promptCacheTtlMs ?? CLAUDE_RESUME_COMPACTION_FALLBACK_MS)
   );
 }
