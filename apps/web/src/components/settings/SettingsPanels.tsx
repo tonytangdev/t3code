@@ -482,7 +482,10 @@ export function useSettingsRestore(onRestored?: () => void) {
       ? ["Follow-up behavior"]
       : []),
     ...(settings.contextWindowMeterEnabled !== DEFAULT_UNIFIED_SETTINGS.contextWindowMeterEnabled
-      ? ["Context window indicator"]
+      ? ["Context tokens in composer"]
+      : []),
+    ...(settings.contextTokenDisplay !== DEFAULT_UNIFIED_SETTINGS.contextTokenDisplay
+      ? ["Context token display"]
       : []),
     ...(settings.responseStreamingMode !== DEFAULT_UNIFIED_SETTINGS.responseStreamingMode
       ? ["Response streaming"]
@@ -596,6 +599,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       sendShortcut: DEFAULT_UNIFIED_SETTINGS.sendShortcut,
       followUpBehavior: DEFAULT_UNIFIED_SETTINGS.followUpBehavior,
       contextWindowMeterEnabled: DEFAULT_UNIFIED_SETTINGS.contextWindowMeterEnabled,
+      contextTokenDisplay: DEFAULT_UNIFIED_SETTINGS.contextTokenDisplay,
       environmentIdentificationMode: DEFAULT_UNIFIED_SETTINGS.environmentIdentificationMode,
       glassOpacity: DEFAULT_UNIFIED_SETTINGS.glassOpacity,
       panelAnimationDurationMs: DEFAULT_UNIFIED_SETTINGS.panelAnimationDurationMs,
@@ -711,19 +715,6 @@ export function LegacyFeaturesSection() {
               updateSettings({ planModeEnabled: Boolean(checked) });
             }}
             aria-label="Plan mode (legacy)"
-          />
-        }
-      />
-      <SettingsRow
-        {...searchableSetting("legacy-context-window-indicator")}
-        description="Shows context window usage as a circular indicator in the composer."
-        control={
-          <Switch
-            checked={settings.contextWindowMeterEnabled}
-            onCheckedChange={(checked) =>
-              updateSettings({ contextWindowMeterEnabled: Boolean(checked) })
-            }
-            aria-label="Context window indicator (legacy)"
           />
         }
       />
@@ -1045,6 +1036,11 @@ export function ChatSettingsPanel() {
     { value: "mod-enter-multiline", label: `${modifierLabel} + Enter for multiline prompts` },
     { value: "mod-enter", label: `${modifierLabel} + Enter always` },
   ] as const;
+  const contextTokenDisplayOptions = [
+    { value: "used", label: "Used tokens" },
+    { value: "used-of-max", label: "Used of maximum" },
+    { value: "percent", label: "Percent used" },
+  ] as const;
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
 
@@ -1147,6 +1143,84 @@ export function ChatSettingsPanel() {
               }
               aria-label="Collapse composer on scroll"
             />
+          }
+        />
+        <SettingsRow
+          {...searchableSetting("composer-context-tokens")}
+          description="Show the thread's context window usage in the composer beside the session limit."
+          resetAction={
+            settings.contextWindowMeterEnabled !==
+            DEFAULT_UNIFIED_SETTINGS.contextWindowMeterEnabled ? (
+              <SettingResetButton
+                label="context tokens in composer"
+                onClick={() =>
+                  updateSettings({
+                    contextWindowMeterEnabled: DEFAULT_UNIFIED_SETTINGS.contextWindowMeterEnabled,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.contextWindowMeterEnabled}
+              onCheckedChange={(checked) =>
+                updateSettings({ contextWindowMeterEnabled: Boolean(checked) })
+              }
+              aria-label="Context tokens in composer"
+            />
+          }
+        />
+        <SettingsRow
+          {...searchableSetting("context-token-display")}
+          description="How the composer reports context window usage."
+          resetAction={
+            settings.contextTokenDisplay !== DEFAULT_UNIFIED_SETTINGS.contextTokenDisplay ? (
+              <SettingResetButton
+                label="context token display"
+                onClick={() =>
+                  updateSettings({
+                    contextTokenDisplay: DEFAULT_UNIFIED_SETTINGS.contextTokenDisplay,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.contextTokenDisplay}
+              disabled={!settings.contextWindowMeterEnabled}
+              onValueChange={(value) => {
+                const option = contextTokenDisplayOptions.find((option) => option.value === value);
+                if (option) updateSettings({ contextTokenDisplay: option.value });
+              }}
+            >
+              <SelectTrigger
+                size="sm"
+                className="w-auto min-w-0 max-w-full"
+                aria-label="Context token display"
+              >
+                <SelectValue>
+                  {
+                    contextTokenDisplayOptions.find(
+                      (option) => option.value === settings.contextTokenDisplay,
+                    )?.label
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                {contextTokenDisplayOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <span className="flex items-center justify-between gap-4">
+                      {option.label}
+                      {settings.contextTokenDisplay === option.value && (
+                        <CheckIcon aria-hidden="true" />
+                      )}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
           }
         />
         <AdvancedSettings targetIds={[searchableSetting("skills-in-slash-menu").id]}>
