@@ -5,6 +5,7 @@ import { stackedThreadToast, toastManager } from "./ui/toast";
 import { ComposerContextLabel } from "./ComposerContextLabel";
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { ComposerUsageLine, type ComposerUsageLineProps } from "./chat/ComposerUsageLine";
 import {
   ChevronDownIcon,
   FolderGit2Icon,
@@ -111,6 +112,8 @@ interface BranchToolbarProps {
   onEnvironmentChange?: (environmentId: EnvironmentId) => void;
   composerControlsHostRef?: (element: HTMLDivElement | null) => void;
   contextStripVisible?: boolean;
+  /** Context and session usage for the thread; sits at the strip's trailing edge. */
+  usage?: Omit<ComposerUsageLineProps, "environmentId">;
 }
 
 function showWorkspaceContextMenu(event: ReactMouseEvent, workspacePath: string) {
@@ -632,6 +635,7 @@ export const BranchToolbar = memo(function BranchToolbar({
   onEnvironmentChange,
   composerControlsHostRef,
   contextStripVisible = true,
+  usage,
 }: BranchToolbarProps) {
   const branchSelectorRef = useRef<BranchToolbarBranchSelectorHandle>(null);
   const threadRef = scopeThreadRef(environmentId, threadId);
@@ -839,11 +843,18 @@ export const BranchToolbar = memo(function BranchToolbar({
         />
       ) : null}
 
+      {usage ? (
+        <ComposerUsageLine {...usage} environmentId={environmentId} className="ml-auto" />
+      ) : null}
+
       {showGitControls ? (
         <BranchToolbarBranchSelector
           forceNewWorktree={forceNewWorktree}
           ref={branchSelectorRef}
-          className="min-w-0 flex-initial justify-end @3xl/composer-surface:ml-auto"
+          className={cn(
+            "min-w-0 flex-initial justify-end",
+            !usage && "@3xl/composer-surface:ml-auto",
+          )}
           environmentId={environmentId}
           threadId={threadId}
           {...(draftId ? { draftId } : {})}

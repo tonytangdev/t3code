@@ -8,7 +8,6 @@ import { createModelSelection } from "@t3tools/shared/model";
 import { BotIcon, PencilRulerIcon } from "lucide-react";
 import { type ComponentProps, memo } from "react";
 
-import type { ContextWindowSnapshot } from "../../lib/contextWindow";
 import { Select, SelectItem, SelectPopup, SelectValue } from "../ui/select";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
@@ -19,7 +18,6 @@ import {
 } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
 import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
-import { ContextWindowMeter, ContextWindowMeterPlaceholder } from "./ContextWindowMeter";
 import { resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import { runtimeModeConfig } from "./runtimeModeConfig";
@@ -150,9 +148,6 @@ export const ComposerFooterModeControls = memo(function ComposerFooterModeContro
 export const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(props: {
   compact: boolean;
   canOperateThread: boolean;
-  activeContextWindow: ContextWindowSnapshot | null;
-  reserveContextWindowMeter: boolean;
-  activeThreadModelDisplayName: string | null;
   isPreparingWorktree: boolean;
   pendingAction: {
     questionIndex: number;
@@ -181,26 +176,12 @@ export const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryA
   onPreviousPendingQuestion: () => void;
   onInterrupt: () => void;
   onImplementPlanInNewThread: () => void;
-  onCompactContext?: (() => void) | undefined;
-  compactDisabled: boolean;
-  compactDisabledReason: string | null;
   compactBeforeSendTokens: number | null;
   keepFullHistory: boolean;
   onToggleKeepFullHistory: () => void;
 }) {
   return (
     <>
-      {props.activeContextWindow ? (
-        <ContextWindowMeter
-          usage={props.activeContextWindow}
-          modelDisplayName={props.activeThreadModelDisplayName}
-          onCompact={props.onCompactContext}
-          compactDisabled={props.compactDisabled}
-          compactDisabledReason={props.compactDisabledReason}
-        />
-      ) : props.reserveContextWindowMeter ? (
-        <ContextWindowMeterPlaceholder />
-      ) : null}
       <ComposerPrimaryActions
         compact={props.compact}
         canOperateThread={props.canOperateThread}

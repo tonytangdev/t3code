@@ -71,11 +71,16 @@ export function shouldShowComposerContextStrip(input: {
   isGitRepo: boolean;
   showEnvironmentIndicator: boolean;
   hostsRestingComposerControls: boolean;
+  /** The thread has context or session usage to report. */
+  hasUsageLine: boolean;
 }): boolean {
   return (
     input.hasActiveProject &&
-    (input.isDraftHeroState || input.persistInActiveThreads) &&
-    (input.isGitRepo || input.showEnvironmentIndicator || input.hostsRestingComposerControls)
+    // The usage line stays glanceable in active threads; the rest of the strip
+    // follows the active-thread preference.
+    (input.hasUsageLine ||
+      ((input.isDraftHeroState || input.persistInActiveThreads) &&
+        (input.isGitRepo || input.showEnvironmentIndicator || input.hostsRestingComposerControls)))
   );
 }
 

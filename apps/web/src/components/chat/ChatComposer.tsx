@@ -78,7 +78,6 @@ import {
   getAntigravitySendBlockReason,
   readFileAsDataUrl,
   resolveComposerInteractionMode,
-  threadShellHasStarted,
 } from "../ChatView.logic";
 import {
   dataTransferHasComposerMention,
@@ -213,11 +212,6 @@ import { buildPullRequestReferenceContext } from "../pullRequest/pullRequestDeta
 import { getComposerPromptInjectionState, getComposerReasoningStep } from "./composerProviderState";
 import { readPromptUltrathink } from "./TraitsPicker";
 import {
-  providerSupportsManualCompaction,
-  resolveContextWindowModelDisplayName,
-  shouldReserveContextWindowMeter,
-} from "./ContextWindowMeter.logic";
-import {
   buildAttachmentVideoPreview,
   buildExpandedImagePreview,
   type ExpandedImagePreview,
@@ -269,7 +263,6 @@ import {
   resolveComposerDispatchMode,
   type ComposerDispatchMode,
 } from "@t3tools/client-runtime/state/composer-dispatch";
-import type { ContextWindowSnapshot } from "../../lib/contextWindow";
 import {
   resolveProviderSkillsForCwd,
   resolveProviderSlashCommandsForCwd,
@@ -447,10 +440,8 @@ export interface ChatComposerProps {
   reportedModelSelection?: ModelSelection | null;
   activeProjectId: ProjectId | null;
 
-  activeContextWindow: ContextWindowSnapshot | null;
   compactThreadUnavailable: boolean;
   compactDisabled: boolean;
-  compactDisabledReason: string | null;
 
   resolvedTheme: "light" | "dark";
   settings: UnifiedSettings;
@@ -584,10 +575,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     activeThreadModelSelection,
     reportedModelSelection,
     activeProjectId,
-    activeContextWindow,
     compactThreadUnavailable,
     compactDisabled,
-    compactDisabledReason,
     resolvedTheme,
     settings,
     keybindings,
@@ -969,8 +958,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         ? providerInstanceEntries.find((entry) => hasProviderSetup(entry.snapshot))?.instanceId
         : undefined))
     : undefined;
-  const resolvedCompactDisabledReason =
-    compactDisabledReason ?? (noProviderAvailable ? "Compacting is unavailable right now" : null);
   const supportedRuntimeModes = selectedProviderEntry?.snapshot.supportedRuntimeModes;
   const compatibleRuntimeModeOptions =
     supportedRuntimeModes && supportedRuntimeModes.length > 0
@@ -995,7 +982,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         (multipleModelSelections === null ? providerSendBlockReason : null)));
   const isSendDisabled = sendDisabledReason !== null;
   const selectedProviderStatus = selectedProviderEntry?.snapshot ?? null;
-  const compactCommandAvailable = providerSupportsManualCompaction(selectedProviderEntry);
   const selectedProviderSkills = selectedProviderStatus
     ? resolveProviderSkillsForCwd(selectedProviderStatus, gitCwd)
     : NO_PROVIDER_SKILLS;
@@ -1040,19 +1026,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       ? selectedModelForPicker
       : (normalizeModelSlug(selectedModelForPicker, selectedProvider) ?? selectedModelForPicker);
   })();
-
-  const activeThreadModelDisplayName = resolveContextWindowModelDisplayName(
-    activeThreadModelSelection,
-    modelOptionsByInstance,
-  );
-  const reserveContextWindowMeter = shouldReserveContextWindowMeter({
-    meterEnabled: settings.contextWindowMeterEnabled,
-    detailLoading: props.threadSyncPhase === "loading",
-    threadStarted: threadShellHasStarted(props.activeThreadShell),
-    providerReportsContextWindow: selectedProviderStatus
-      ? selectedProviderStatus.reportsContextWindow === true
-      : null,
-  });
 
   const [composerCursor, setComposerCursor] = useState(() => {
     const value = isLiteralPendingAnswer ? (activePendingProgress?.customAnswer ?? prompt) : prompt;
@@ -3904,11 +3877,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
-                    activeContextWindow={
-                      settings.contextWindowMeterEnabled ? activeContextWindow : null
-                    }
-                    reserveContextWindowMeter={reserveContextWindowMeter}
-                    activeThreadModelDisplayName={activeThreadModelDisplayName}
                     pendingAction={pendingPrimaryAction}
                     isRunning={phase === "running"}
                     canInterrupt={canInterrupt}
@@ -3954,13 +3922,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     compactBeforeSendTokens={props.resumeCompactionTokens}
                     keepFullHistory={props.keepFullHistory}
                     onToggleKeepFullHistory={props.onToggleKeepFullHistory}
-                    compactDisabled={
-                      compactDisabled || noProviderAvailable || isSendBusy || isConnecting
-                    }
-                    compactDisabledReason={resolvedCompactDisabledReason}
-                    {...(compactCommandAvailable
-                      ? { onCompactContext: compactThreadContextStable }
-                      : {})}
                   />
                 </div>
               </div>

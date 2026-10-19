@@ -306,6 +306,7 @@ import {
   hasDismissedResumeCompaction,
   shouldOfferResumeCompaction,
 } from "./chat/ContextWindowMeter.logic";
+import { selectSessionWindow } from "./chat/ComposerUsageLine.logic";
 import {
   deriveLatestContextWindowSnapshot,
   latestProviderTurnTokenUsage,
@@ -1670,6 +1671,14 @@ export default function ChatView(props: ChatViewProps) {
     }
   }, [environmentId, gitStatusCwd, liveIsGitRepo]);
   const isGitRepo = liveIsGitRepo ?? recallCheckoutIsRepo(environmentId, gitStatusCwd) ?? true;
+  const composerUsage = {
+    contextWindow: activeContextWindow,
+    contextDisplay: settings.contextWindowMeterEnabled ? settings.contextTokenDisplay : null,
+    limits: activeProviderStatus?.usageLimits,
+  };
+  const hasComposerUsageLine =
+    (composerUsage.contextDisplay !== null && composerUsage.contextWindow !== null) ||
+    selectSessionWindow(composerUsage.limits) !== null;
   // A provider-native subagent cannot take messages: a status bar replaces the
   // composer and its strips. Its approvals and questions are asked on the
   // top-level parent thread.
@@ -1705,6 +1714,7 @@ export default function ChatView(props: ChatViewProps) {
     isGitRepo,
     showEnvironmentIndicator: showComposerEnvironmentIndicator,
     hostsRestingComposerControls: routeKind === "server",
+    hasUsageLine: hasComposerUsageLine,
   });
   const showComposerContextStrip = shouldShowComposerContextStrip({
     isDraftHeroState,
@@ -1713,6 +1723,7 @@ export default function ChatView(props: ChatViewProps) {
     isGitRepo,
     showEnvironmentIndicator: showComposerEnvironmentIndicator,
     hostsRestingComposerControls: routeKind === "server" && restingComposerControlsVisible,
+    hasUsageLine: hasComposerUsageLine,
   });
   const mountComposerModelStrip =
     routeKind === "server" && !mountComposerContextStrip && !showProviderSubagentBar;
@@ -2517,15 +2528,6 @@ export default function ChatView(props: ChatViewProps) {
     pendingUserInputs.length > 0 ||
     showPlanFollowUpPrompt;
   const compactDisabled = compactThreadUnavailable;
-  const compactDisabledReason = compactDisabled
-    ? !canOperateThread
-      ? "This connection cannot change threads."
-      : !activeProject
-        ? "Choose a project before compacting"
-        : !manualCompactionProviderAvailable
-          ? "Compaction is unavailable for this provider"
-          : "Compacting is unavailable right now"
-    : null;
   const resumeCompactionTokens =
     activeContextWindow &&
     resolveIdleCompaction(
@@ -3566,12 +3568,10 @@ export default function ChatView(props: ChatViewProps) {
                               }
                               activeThreadModelSelection={activeThread?.modelSelection}
                               activeProjectId={activeProject?.id ?? null}
-                              activeContextWindow={activeContextWindow}
                               activeTasksProgress={activeComposerTasksProgress}
                               activeTaskSteps={activeComposerTaskSteps}
                               compactThreadUnavailable={compactThreadUnavailable}
                               compactDisabled={compactDisabled}
-                              compactDisabledReason={compactDisabledReason}
                               resolvedTheme={resolvedTheme}
                               settings={settings}
                               keybindings={keybindings}
@@ -3705,6 +3705,7 @@ export default function ChatView(props: ChatViewProps) {
                                 availableEnvironments={logicalProjectEnvironments}
                                 composerControlsHostRef={setRestingComposerControlsHost}
                                 contextStripVisible={showComposerContextStrip}
+                                {...(hasComposerUsageLine ? { usage: composerUsage } : {})}
                               />
                             </div>
                           )}

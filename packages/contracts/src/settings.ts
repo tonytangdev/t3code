@@ -291,6 +291,11 @@ export const LoadBalancingWeights = Schema.Record(
 
 export const DiffColorScheme = Schema.Literals(["red-green", "blue-orange"]);
 
+// How the composer usage line renders the context segment when
+// `contextWindowMeterEnabled` is on.
+export const ContextTokenDisplay = Schema.Literals(["used", "used-of-max", "percent"]);
+export type ContextTokenDisplay = typeof ContextTokenDisplay.Type;
+
 export const ChatWidth = Schema.Literals(["comfortable", "wide", "full"]);
 export type ChatWidth = typeof ChatWidth.Type;
 
@@ -432,7 +437,12 @@ export const ClientSettingsSchema = Schema.Struct({
   pullRequestLinksOpenInApp: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
 
   planModeEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-  contextWindowMeterEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  // Context tokens in the usage line under the composer. The key predates the
+  // line (it gated the old ring meter) and is kept so a stored choice applies.
+  contextWindowMeterEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  contextTokenDisplay: ContextTokenDisplay.pipe(
+    Schema.withDecodingDefault(Effect.succeed("used" as const)),
+  ),
   composerCollapseOnScroll: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   composerRichTextEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   sendShortcut: Schema.Literals(["enter", "mod-enter-multiline", "mod-enter"]).pipe(
@@ -1727,6 +1737,7 @@ export const ClientSettingsPatch = Schema.Struct({
   pullRequestLinksOpenInApp: Schema.optionalKey(Schema.Boolean),
   planModeEnabled: Schema.optionalKey(Schema.Boolean),
   contextWindowMeterEnabled: Schema.optionalKey(Schema.Boolean),
+  contextTokenDisplay: Schema.optionalKey(ContextTokenDisplay),
   composerCollapseOnScroll: Schema.optionalKey(Schema.Boolean),
   composerRichTextEnabled: Schema.optionalKey(Schema.Boolean),
   sendShortcut: Schema.optionalKey(Schema.Literals(["enter", "mod-enter-multiline", "mod-enter"])),
