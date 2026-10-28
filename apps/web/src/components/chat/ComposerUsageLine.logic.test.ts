@@ -6,6 +6,7 @@ import {
   formatContextValue,
   formatSessionWindowLabel,
   selectSessionWindow,
+  selectVisibleSessionWindow,
   usageTone,
 } from "./ComposerUsageLine.logic";
 
@@ -45,7 +46,7 @@ function sessionWindow(
     id: "five_hour",
     kind: "session",
     label: "Current session",
-    usedPercent: 42,
+    usedPercent: 74,
     resetsAt: new Date(NOW + 80 * MINUTE).toISOString(),
     windowDurationMins: 300,
     ...overrides,
@@ -70,6 +71,14 @@ describe("selectSessionWindow", () => {
       selectSessionWindow({ ...limits([sessionWindow()]), unavailable: { reason: "unsupported" } }),
     ).toBeNull();
     expect(selectSessionWindow(limits([sessionWindow({ kind: "weekly" })]))).toBeNull();
+  });
+});
+
+describe("selectVisibleSessionWindow", () => {
+  it("hides the session window until usage is above 70%", () => {
+    expect(selectVisibleSessionWindow(limits([sessionWindow({ usedPercent: 70 })]))).toBeNull();
+    const session = sessionWindow({ usedPercent: 70.1 });
+    expect(selectVisibleSessionWindow(limits([session]))).toBe(session);
   });
 });
 
@@ -126,7 +135,7 @@ describe("buildComposerUsageLine", () => {
       }),
     ).toEqual([
       { id: "context", label: "ctx", value: "62k", tone: "muted", percent: 31 },
-      { id: "session", label: "5h", value: "42%", tone: "muted", percent: 42 },
+      { id: "session", label: "5h", value: "74%", tone: "muted", percent: 74 },
       { id: "reset", label: "resets in", value: "1h 20m", tone: "muted", percent: null },
     ]);
   });
@@ -157,7 +166,8 @@ describe("buildComposerUsageLine", () => {
         limits: limits([sessionWindow({ usedPercent })]),
         now: NOW,
       })[0]?.tone;
-    expect(at(42)).toBe("muted");
+    expect(at(42)).toBeUndefined();
+    expect(at(75)).toBe("muted");
     expect(at(80)).toBe("warning");
     expect(at(95)).toBe("error");
   });
@@ -169,18 +179,18 @@ describe("buildComposerUsageLine", () => {
       limits: limits([sessionWindow({ resetsAt: new Date(NOW + 30_000).toISOString() })]),
       now: NOW,
     });
-    expect(line.map((segment) => segment.value)).toEqual(["42%", "resetting…"]);
+    expect(line.map((segment) => segment.value)).toEqual(["74%", "resetting…"]);
     expect(line[1]?.label).toBe("");
   });
 
-  it("shows an expired window as empty and drops the reset until fresh data lands", () => {
+  it("hides an expired window until fresh data lands", () => {
     const line = buildComposerUsageLine({
       contextWindow: null,
       contextDisplay: null,
       limits: limits([sessionWindow({ resetsAt: new Date(NOW - MINUTE).toISOString() })]),
       now: NOW,
     });
-    expect(line).toEqual([{ id: "session", label: "5h", value: "0%", tone: "muted", percent: 0 }]);
+    expect(line).toEqual([]);
   });
 
   it("omits the reset when the window has no reset time", () => {

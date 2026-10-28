@@ -312,7 +312,7 @@ import {
   hasDismissedResumeCompaction,
   shouldOfferResumeCompaction,
 } from "./chat/ContextWindowMeter.logic";
-import { selectSessionWindow } from "./chat/ComposerUsageLine.logic";
+import { selectVisibleSessionWindow } from "./chat/ComposerUsageLine.logic";
 import {
   deriveLatestContextWindowSnapshot,
   latestProviderTurnTokenUsage,
@@ -1659,7 +1659,7 @@ export default function ChatView(props: ChatViewProps) {
   };
   const hasComposerUsageLine =
     (composerUsage.contextDisplay !== null && composerUsage.contextWindow !== null) ||
-    selectSessionWindow(composerUsage.limits) !== null;
+    selectVisibleSessionWindow(composerUsage.limits) !== null;
   // Provider-native subagents cannot take messages; approvals and questions go to the top-level parent.
   const showProviderSubagentBar = isProviderSubagent;
   const composerMounted = !showProviderSubagentBar;

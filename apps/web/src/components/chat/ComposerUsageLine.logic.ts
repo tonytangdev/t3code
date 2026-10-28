@@ -7,6 +7,7 @@ import { formatDuration } from "@t3tools/shared/usageLimits";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "../../lib/contextWindow";
 
 const MINUTE = 60_000;
+const SESSION_VISIBLE_ABOVE_PERCENT = 70;
 
 export type ComposerUsageTone = "muted" | "warning" | "error";
 
@@ -29,6 +30,14 @@ export function selectSessionWindow(
 ): ServerProviderUsageWindow | null {
   if (!limits || limits.unavailable) return null;
   return limits.windows.find((window) => window.kind === "session") ?? null;
+}
+
+/** The session window only once usage is high enough to be worth the footer space. */
+export function selectVisibleSessionWindow(
+  limits: ServerProviderUsageLimits | null | undefined,
+): ServerProviderUsageWindow | null {
+  const session = selectSessionWindow(limits);
+  return session && session.usedPercent > SESSION_VISIBLE_ABOVE_PERCENT ? session : null;
 }
 
 /** `5h` for whole-hour windows; the provider's label is too long for the footer. */
@@ -63,11 +72,9 @@ export function formatContextValue(
 }
 
 /**
- * Segments for the composer footer's usage line. `contextDisplay: null` hides
- * the context segment. An expired window reads as empty until the next probe
- * replaces it. Compact mode is presentational: the strip's overflow measurement
- * assumes the needed width does not depend on whether it is already compact,
- * so the component always mounts every segment and collapses the extras with CSS.
+ * Segments for the composer footer's usage line. Session and reset show only
+ * above 70% usage and hide once the window expires. Compact mode is CSS-only:
+ * the strip's overflow measurement needs a width independent of compactness.
  */
 export function buildComposerUsageLine(input: {
   readonly contextWindow: ContextWindowSnapshot | null;
@@ -88,13 +95,13 @@ export function buildComposerUsageLine(input: {
     });
   }
 
-  const session = selectSessionWindow(input.limits);
+  const session = selectVisibleSessionWindow(input.limits);
   if (!session) return segments;
 
   const resetsAt = session.resetsAt === undefined ? null : Date.parse(session.resetsAt);
   const untilReset = resetsAt !== null && Number.isFinite(resetsAt) ? resetsAt - input.now : null;
-  const expired = untilReset !== null && untilReset <= 0;
-  const usedPercent = expired ? 0 : session.usedPercent;
+  if (untilReset !== null && untilReset <= 0) return segments;
+  const usedPercent = session.usedPercent;
   segments.push({
     id: "session",
     label: formatSessionWindowLabel(session),
@@ -103,7 +110,7 @@ export function buildComposerUsageLine(input: {
     percent: Math.round(usedPercent),
   });
 
-  if (untilReset !== null && !expired) {
+  if (untilReset !== null) {
     segments.push({
       id: "reset",
       ...(untilReset < MINUTE
